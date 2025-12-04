@@ -13,8 +13,12 @@ grid_width = -1
 grid_height = -1
 
 
-def grid_value(grid, x, y):
+def get_grid_value(grid, x, y):
     return grid[y * grid_width + x]
+
+
+def set_grid_value(grid, x, y, v):
+    grid[y * grid_width + x] = v
 
 
 def is_in_grid(x, y):
@@ -25,7 +29,7 @@ def is_accessible(grid, cx, cy):
     count = 0
     for x in range(cx - 1, cx + 2):
         for y in range(cy - 1, cy + 2):
-            if (cx != x or cy != y) and is_in_grid(x, y) and grid_value(grid, x, y):
+            if (cx != x or cy != y) and is_in_grid(x, y) and get_grid_value(grid, x, y):
                 count += 1
                 if count >= THRESHOLD:
                     return False
@@ -37,29 +41,53 @@ def count_accessible_cells(grid):
     result = 0
     for cx in range(grid_width):
         for cy in range(grid_height):
-            if grid_value(grid, cx, cy) and is_accessible(grid, cx, cy):
+            if get_grid_value(grid, cx, cy) and is_accessible(grid, cx, cy):
                 #print(f"{cx},{cy}", grid_value(grid, cx, cy))
                 result += 1
     return result
 
 
-def solve(filename):
+def remove_accessible_cells(grid):
+    result = grid.copy()
+    for cx in range(grid_width):
+        for cy in range(grid_height):
+            if get_grid_value(grid, cx, cy) and is_accessible(grid, cx, cy):
+                #print(f"{cx},{cy}", grid_value(grid, cx, cy))
+                set_grid_value(result, cx, cy, False)
+    return result
+
+
+def read_grid(filename):
     global grid_width
     global grid_height
 
-    grid = []
-
+    result = []
     with open(filename) as file:
         for line in file:
             for character in line.rstrip():
-                grid.append(character == '@')
+                result.append(character == '@')
             if grid_width < 0:
-                grid_width = len(grid)
+                grid_width = len(result)
 
-        grid_height = int(len(grid) / grid_width)
+        grid_height = int(len(result) / grid_width)
 
-        result = count_accessible_cells(grid)
-        print(result)
+    return result
+
+
+def solve(filename):
+    grid = read_grid(filename)
+
+    num_removed = 0
+    while True:
+        num_removable = count_accessible_cells(grid)
+        if num_removable <= 0:
+            break
+
+        # Inefficient to calculate twice but hey.
+        grid = remove_accessible_cells(grid)
+        num_removed += num_removable
+
+    print(num_removed)
 
 
 solve("input.txt")
