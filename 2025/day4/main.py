@@ -47,6 +47,16 @@ def count_accessible_cells(grid):
     return result
 
 
+def remove_first_accessible_cell(grid):
+    for cx in range(grid_width):
+        for cy in range(grid_height):
+            if get_grid_value(grid, cx, cy) and is_accessible(grid, cx, cy):
+                #print(f"{cx},{cy}", grid_value(grid, cx, cy))
+                set_grid_value(grid, cx, cy, False)
+                return grid
+    return None
+
+
 def remove_accessible_cells(grid):
     result = grid.copy()
     for cx in range(grid_width):
@@ -79,13 +89,11 @@ def solve(filename):
 
     num_removed = 0
     while True:
-        num_removable = count_accessible_cells(grid)
-        if num_removable <= 0:
-            break
-
         # Inefficient to calculate twice but hey.
-        grid = remove_accessible_cells(grid)
-        num_removed += num_removable
+        grid = remove_first_accessible_cell(grid)
+        if not grid:
+            break
+        num_removed += 1
 
     print(num_removed)
 
