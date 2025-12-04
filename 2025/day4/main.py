@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import cProfile
 import math
 import re
 
@@ -89,7 +90,6 @@ def solve(filename):
 
     num_removed = 0
     while True:
-        # Inefficient to calculate twice but hey.
         grid = remove_first_accessible_cell(grid)
         if not grid:
             break
@@ -98,5 +98,9 @@ def solve(filename):
     print(num_removed)
 
 
-solve("input.txt")
-#solve("test.txt")
+def main():
+    solve("input.txt")
+    #solve("test.txt")
+
+
+cProfile.run("main()")
