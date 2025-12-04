@@ -85,7 +85,7 @@ def read_grid(filename):
     return result
 
 
-def solve(filename):
+def solve_one_at_a_time(filename):
     grid = read_grid(filename)
 
     num_removed = 0
@@ -98,8 +98,24 @@ def solve(filename):
     print(num_removed)
 
 
+def solve_batch_wise(filename):
+    grid = read_grid(filename)
+
+    num_removed = 0
+    while True:
+        num_removable = count_accessible_cells(grid)
+        if num_removable <= 0:
+            break
+
+        # Inefficient to calculate twice but hey.
+        grid = remove_accessible_cells(grid)
+        num_removed += num_removable
+
+    print(num_removed)
+
+
 def main():
-    solve("input.txt")
+    solve_batch_wise("input.txt")
     #solve("test.txt")
 
 
