@@ -3,22 +3,25 @@
 import math
 import re
 
-# Guesses: 27180728081 (too high)
+# Guesses: 27180728081 (too high), 37556907 (too low), 19219513675 (too high), 19219508902 (just right!)
 
 
 def solve(num):
     num_str = str(num)
     length = len(num_str)
 
-    for i in range(1, length):
-        if length % i == 0:
-            pattern = num_str[0:i]
-            count = math.floor(length / i)
-            regex = f"^({pattern}){{{count}}}$"
-            result = re.search(regex, num_str)
-            #print(numstr, regex, result)
-            if result:
-                return True
+    if length % 2 != 0:
+        return False
+
+    i = int(length / 2)
+    if i > 0:
+        pattern = num_str[0:i]
+        count = math.floor(length / i)
+        regex = f"^({pattern}){{{count}}}$"
+        result = re.search(regex, num_str)
+        if result:
+            print(num_str, pattern)
+            return True
 
     return False
 
@@ -32,7 +35,6 @@ def solve_range(low, high):
     accum = 0
     for i in range(low, high + 1):
         if solve(i):
-            print(i)
             accum += i
     return accum
 
@@ -45,10 +47,13 @@ def main():
             for range_str in ranges:
                 num_strs = range_str.split("-")
                 accum += solve_range(int(num_strs[0]), int(num_strs[1]))
+
     print(accum)
 
 
 def test():
+    #positive_cases = [11, 111, 1111, 1212, 11111, 111111, 121212, 123123]
+    #negative_cases = [12, 121, 1221, 12121, 21212, 11211, 121211, 123121]
     positive_cases = [11, 111, 1111, 1212, 11111, 111111, 121212, 123123]
     negative_cases = [12, 121, 1221, 12121, 21212, 11211, 121211, 123121]
 
@@ -59,6 +64,6 @@ def test():
     solve_cases(negative_cases)
 
 def test2():
-    print(solve_range(3434061167,3434167492))
+    print(solve_range(76756725,76781020))
 
 main()
