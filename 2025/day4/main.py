@@ -49,13 +49,15 @@ def count_accessible_cells(grid):
 
 
 def remove_first_accessible_cell(grid):
+    num_removed = 0
     for cx in range(grid_width):
         for cy in range(grid_height):
             if get_grid_value(grid, cx, cy) and is_accessible(grid, cx, cy):
                 #print(f"{cx},{cy}", grid_value(grid, cx, cy))
                 set_grid_value(grid, cx, cy, False)
-                return grid
-    return None
+                num_removed += 1
+
+    return (num_removed, grid)
 
 
 def remove_accessible_cells(grid):
@@ -88,14 +90,15 @@ def read_grid(filename):
 def solve_one_at_a_time(filename):
     grid = read_grid(filename)
 
-    num_removed = 0
+    total_removed = 0
     while True:
-        grid = remove_first_accessible_cell(grid)
-        if not grid:
+        (num_removed, grid) = remove_first_accessible_cell(grid)
+        if num_removed <= 0:
             break
-        num_removed += 1
+        total_removed += num_removed
 
-    print(num_removed)
+
+    print(total_removed)
 
 
 def solve_batch_wise(filename):
@@ -115,7 +118,9 @@ def solve_batch_wise(filename):
 
 
 def main():
-    solve_batch_wise("input.txt")
+    solve_one_at_a_time("input.txt")
+
+    print(f"Grid size: {grid_width} x {grid_height}")
     #solve("test.txt")
 
 
