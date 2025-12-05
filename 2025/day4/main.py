@@ -38,6 +38,26 @@ def is_accessible(grid, cx, cy):
     return True
 
 
+def get_accessible_neighbors(grid, cx, cy):
+    result = []
+    for x in range(cx - 1, cx + 2):
+        for y in range(cy - 1, cy + 2):
+            if (cx != x or cy != y) and is_in_grid(x, y) and get_grid_value(grid, x, y) and is_accessible(grid, x, y):
+                result.append((x, y))
+
+    return result
+
+
+def get_accessible_cells(grid):
+    result = []
+    for cx in range(grid_width):
+        for cy in range(grid_height):
+            if get_grid_value(grid, cx, cy) and is_accessible(grid, cx, cy):
+                #print(f"{cx},{cy}", grid_value(grid, cx, cy))
+                result.append((cx, cy))
+    return result
+
+
 def count_accessible_cells(grid):
     result = 0
     for cx in range(grid_width):
@@ -117,8 +137,26 @@ def solve_batch_wise(filename):
     print(num_removed)
 
 
+def solve_doomed_neighbors(filename):
+    grid = read_grid(filename)
+    queue = get_accessible_cells(grid)
+    num_removed = 0
+
+    while len(queue) > 0:
+        (x, y) = queue.pop()
+        if not get_grid_value(grid, x, y):
+            continue
+
+        set_grid_value(grid, x, y, False)
+        neighbors = get_accessible_neighbors(grid, x, y)
+        queue.extend(neighbors)
+        num_removed += 1
+
+    print(num_removed)
+
+
 def main():
-    solve_one_at_a_time("input.txt")
+    solve_doomed_neighbors("input.txt")
 
     print(f"Grid size: {grid_width} x {grid_height}")
     #solve("test.txt")
