@@ -8,36 +8,43 @@ import re
 
 def solve(filename):
     with open(filename) as file:
-        beams = []
-        num_splits = 0
+        beam_stack = []
 
         first_line = file.readline()
-        beams.append(first_line.find('S'))
+        beam_stack.append((0, first_line.find('S')))
 
-        for line in file:
-            next_beams = []
-            for beam in beams:
-                if line[beam] == '^':
-                    num_splits += 1
-                    if not beam - 1 in next_beams:
-                        next_beams.append(beam - 1)
-                    if not beam + 1 in next_beams:
-                        next_beams.append(beam + 1)
+        lines = file.readlines()
+        num_lines = len(lines)
 
-                elif line[beam] == '.':
-                    if not beam in next_beams:
-                        next_beams.append(beam)
+        result = 0
 
-                else:
-                    print("ERROR Bad character.")
-            beams = next_beams
-        return num_splits
+        while len(beam_stack) > 0:
+            (row, col) = beam_stack.pop()
+
+            if row >= num_lines:
+                result += 1
+                print(result)
+                continue
+
+            char = lines[row][col]
+
+            if char == '^':
+                beam_stack.append((row + 1, col - 1))
+                beam_stack.append((row + 1, col + 1))
+
+            elif char == '.':
+                beam_stack.append((row + 1, col))
+
+            else:
+                print("ERROR Bad character.")
+
+        return result
 
 
 
 def main():
-    result = solve("input.txt")
-    print(result)
+    result = solve("test.txt")
+    print(f"Result: {result}")
 
 
 main()
