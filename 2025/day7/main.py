@@ -8,42 +8,34 @@ import re
 
 def solve(filename):
     with open(filename) as file:
-        beam_stack = []
-
-        first_line = file.readline()
-        beam_stack.append((0, first_line.find('S')))
-
         lines = file.readlines()
-        num_lines = len(lines)
+        lines.reverse()
 
-        result = 0
+        totals = [1] * len(lines[0])
 
-        while len(beam_stack) > 0:
-            (row, col) = beam_stack.pop()
+        for line in lines:
+            next_totals = []
 
-            if row >= num_lines:
-                result += 1
-                print(result)
-                continue
+            for i, char in enumerate(line.rstrip()):
+                if char == '^':
+                    next_totals.append(totals[i - 1] + totals[i + 1])
 
-            char = lines[row][col]
+                elif char == '.':
+                    next_totals.append(totals[i])
 
-            if char == '^':
-                beam_stack.append((row + 1, col - 1))
-                beam_stack.append((row + 1, col + 1))
+                elif char == 'S':
+                    return totals[i]
 
-            elif char == '.':
-                beam_stack.append((row + 1, col))
+                else:
+                    print("ERROR Bad character.", char)
 
-            else:
-                print("ERROR Bad character.")
+            totals = next_totals
 
-        return result
 
 
 
 def main():
-    result = solve("test.txt")
+    result = solve("input.txt")
     print(f"Result: {result}")
 
 
