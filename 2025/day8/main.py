@@ -25,7 +25,7 @@ def merge_circuits(circuits, coord0_str, coord1_str):
 
     return result
 
-def solve(filename, num_connections):
+def part1(filename, num_connections):
     coords = []
     with open(filename) as file:
         for line in file:
@@ -70,10 +70,45 @@ def solve(filename, num_connections):
         mult *= len(circuits[i])
     return mult
 
+def part2(filename):
+    coords = []
+    with open(filename) as file:
+        for line in file:
+            coord = list(map(int, line.split(",")))
+            coords.append(coord)
+
+    num_coords = len(coords)
+
+    coord_pairs = []
+    for i in range(num_coords - 1):
+        for j in range(i + 1, num_coords):
+            coord_pairs.append({
+                "coord0": coords[i],
+                "coord1": coords[j],
+                "dist_sq": get_dist_sq(coords[i], coords[j])
+            })
+
+    coord_pairs.sort(key=lambda d: d["dist_sq"])
+
+    # An array of array of coord strings.
+    circuits = list(map(lambda d: [",".join(map(str, d))], coords))
+
+    for i, coord_pair in enumerate(coord_pairs):
+        #print(circuits)
+        coord0_str = ",".join(map(str, coord_pair["coord0"]))
+        coord1_str = ",".join(map(str, coord_pair["coord1"]))
+
+        circuits = merge_circuits(circuits, coord0_str, coord1_str)
+
+        if len(circuits) <= 1:
+            return coord_pair["coord0"][0] * coord_pair["coord1"][0]
+
 
 def main():
-    #result = solve("test.txt", 10)
-    result = solve("input.txt", 1000)
+    #result = part1("test.txt", 10)
+    #result = part1("input.txt", 1000)
+    #result = part2("test.txt")
+    result = part2("input.txt")
     print(f"Result: {result}")
 
 
