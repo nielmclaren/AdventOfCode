@@ -4,12 +4,11 @@ import cProfile
 import math
 import re
 
-# Guesses: ...
-
-NONE = 0
-RED = 1
-GREEN = 2
-OUTER = 3
+# Guesses:
+# 4472716059 (too high),
+# 1389211740 (too low),
+# 1544327824 (too low)
+#
 
 def get_area(coords0, coords1):
     result = abs(coords1[0] - coords0[0] + 1) * abs(coords1[1] - coords0[1] + 1)
@@ -44,48 +43,85 @@ def get_offset(step):
 
     print("ERROR get_offset got bad step", step)
 
-
-# Walk the border of the rectangle with opposite corners coord0 and coord1 to
-# check whether it overlaps with an OUTER cell in the grid.
-def border_has_outer(grid, width, coord0, coord1):
-    if coord0[0] == coord1[0]:
-        step = int((coord1[1] - coord0[1])/abs(coord1[1] - coord0[1]))
-        for y in range(coord0[1], coord1[1], step):
-            if grid[y * width + coord0[0]] == OUTER:
-                return True
-
-    elif coord0[1] == coord1[1]:
-        step = int((coord1[0] - coord0[0])/abs(coord1[0] - coord0[0]))
-        for x in range(coord0[0], coord1[0], step):
-            if grid[coord0[1] * width + x] == OUTER:
-                return True
+def get_dir(a, b):
+    if a[0] == b[0]:
+        diff = b[1] - a[1]
+        return [0, int(diff / abs(diff))]
+    if a[1] == b[1]:
+        diff = b[0] - a[0]
+        return [int(diff / abs(diff)), 0]
+    print("ERROR")
 
 
-    else:
-        coords = [coord0, [coord1[0], coord0[1]], coord1, [coord0[0], coord1[1]]]
+def get_bad_coords(coords):
+    result = []
+
+    # Corners
+    for i, curr_coord in enumerate(coords):
+        prev_coord = coords[(i - 1) % len(coords)]
+        next_coord = coords[(i + 1) % len(coords)]
+        start_dir = get_dir(prev_coord, curr_coord)
+        end_dir = get_dir(curr_coord, next_coord)
+
+        if start_dir[0] == 0:
+            # Vertical to horizontal
+            if start_dir[1] == end_dir[0]:
+                # Inner corner
+                result.append([x - y + z for x, y, z in zip(curr_coord, start_dir, end_dir)])
+            else:
+                # Outer corner
+                result.append([x + y - z for x, y, z in zip(curr_coord, start_dir, end_dir)])
+                result.append([x + y for x, y, z in zip(curr_coord, start_dir, end_dir)])
+                result.append([x - z for x, y, z in zip(curr_coord, start_dir, end_dir)])
+        else:
+            # Horizontal to vertical
+            if start_dir[0] == end_dir[1]:
+                # Outer corner
+                result.append([x + y - z for x, y, z in zip(curr_coord, start_dir, end_dir)])
+                result.append([x + y for x, y, z in zip(curr_coord, start_dir, end_dir)])
+                result.append([x - z for x, y, z in zip(curr_coord, start_dir, end_dir)])
+            else:
+                # Inner corner
+                result.append([x - y + z for x, y, z in zip(curr_coord, start_dir, end_dir)])
+
+    if True:
+        # Outers
         prev_coord = coords[-1]
-        for coord in coords:
+        for i, coord in enumerate(coords):
             if coord[0] == prev_coord[0]:
                 step = int((coord[1] - prev_coord[1])/abs(coord[1] - prev_coord[1]))
-                for y in range(prev_coord[1], coord[1], step):
-                    if grid[y * width + coord[0]] == OUTER:
-                        return True
+                offset = get_offset((0, step))
+                for y in range(prev_coord[1] + step, coord[1], step):
+                    result.append([coord[0] + offset[0], y + offset[1]])
 
             elif coord[1] == prev_coord[1]:
                 step = int((coord[0] - prev_coord[0])/abs(coord[0] - prev_coord[0]))
-                for x in range(prev_coord[0], coord[0], step):
-                    if grid[coord[1] * width + x] == OUTER:
-                        return True
+                offset = get_offset((step, 0))
+                for x in range(prev_coord[0] + step, coord[0], step):
+                    result.append([x + offset[0], coord[1] + offset[1]])
 
             prev_coord = coord
 
+    return result
+
+# Options are (1, 0) to (0, 1)
+
+def rect_contains_coord(coord0, coord1, test_coord):
+    low_x = min(coord0[0], coord1[0])
+    low_y = min(coord0[1], coord1[1])
+    high_x = max(coord0[0], coord1[0])
+    high_y = max(coord0[1], coord1[1])
+    x = test_coord[0]
+    y = test_coord[1]
+    return low_x < x and x < high_x and low_y < y and y < high_y
+
+def contains_any_bad_coord(coords, i, j, bad_coords):
+    for bad_coord in bad_coords:
+        if rect_contains_coord(coords[i], coords[j], bad_coord):
+            return True
     return False
 
-
-
 def part2(filename):
-    global NONE, RED, GREEN, OUTER
-
     coords = []
     highest_x = 0
     highest_y = 0
@@ -102,94 +138,60 @@ def part2(filename):
     width = highest_x + 2
     height = highest_y + 2
     print(f"Width: {width}, Height: {height}")
-    grid = [NONE] * width * height
+
+    num_coords = len(coords)
+
+    bad_coords = get_bad_coords(coords)
 
     if True:
-        # Outers
-        prev_coord = coords[-1]
-        for coord in coords:
-            if coord[0] == prev_coord[0]:
-                step = int((coord[1] - prev_coord[1])/abs(coord[1] - prev_coord[1]))
-                offset = get_offset((0, step))
-                for y in range(prev_coord[1], coord[1] + step, step):
-                    grid[(y + offset[1]) * width + coord[0] + offset[0]] = OUTER
-
-            elif coord[1] == prev_coord[1]:
-                step = int((coord[0] - prev_coord[0])/abs(coord[0] - prev_coord[0]))
-                offset = get_offset((step, 0))
-                for x in range(prev_coord[0], coord[0] + step, step):
-                    grid[(coord[1] + offset[1]) * width + x + offset[0]] = OUTER
-
-            prev_coord = coord
-
-    if True:
-        # Borders
-        prev_coord = coords[-1]
-        for coord in coords:
-            if coord[0] == prev_coord[0]:
-                step = int((coord[1] - prev_coord[1])/abs(coord[1] - prev_coord[1]))
-                offset = get_offset((0, step))
-                for y in range(prev_coord[1] + step, coord[1], step):
-                    grid[y * width + coord[0]] = GREEN
-
-            elif coord[1] == prev_coord[1]:
-                step = int((coord[0] - prev_coord[0])/abs(coord[0] - prev_coord[0]))
-                offset = get_offset((step, 0))
-                for x in range(prev_coord[0] + step, coord[0], step):
-                    grid[coord[1] * width + x] = GREEN
-
-            prev_coord = coord
-
-    # Corners
-    for i, coord in enumerate(coords):
-        prev_coord = coords[(i - 1) % len(coords)]
-        next_coord = coords[(i + 1) % len(coords)]
-        grid[coord[1] * width + coord[0]] = RED
-
-
-    if False:
-        # Print
-        print("")
+        # Print grid
         for y in range(height):
             for x in range(width):
-                value = grid[y * width + x]
-                if value == NONE:
-                    print(".", end="")
-                elif value == RED:
-                    print("#", end="")
-                elif value == GREEN:
-                    print("@", end="")
-                elif value == OUTER:
-                    print("?", end="")
-                else:
+                if [x, y] in bad_coords:
                     print("x", end="")
+                elif [x, y] in coords:
+                    print("#", end="")
+                else:
+                    print(".", end="")
             print("")
-        print("")
 
-    largest_area = 0
-    largest_coord0 = None
-    largest_coord1 = None
-    for i in range(len(coords) - 1):
-        for j in range(1, len(coords)):
+    rects = []
+    for i in range(num_coords - 1):
+        for j in range(1, num_coords):
             area = get_area(coords[i], coords[j])
-            if area > largest_area:
-                if not border_has_outer(grid, width, coords[i], coords[j]):
-                    largest_area = area
-                    largest_coord0 = coords[i]
-                    largest_coord0 = coords[j]
+            rects.append({
+                "coord0": coords[i],
+                "coord1": coords[j],
+                "coord0_index": i,
+                "coord1_index": j,
+                "area": area
+            })
 
-    print(largest_coord0, largest_coord1)
+    rects.sort(key=lambda d: d["area"], reverse=True)
 
-    return largest_area
+    if True:
+        largest_rect = None
+        num_rects = len(rects)
+        for i, rect in enumerate(rects):
+            print(f"{i} / {num_rects}", rect["coord0"], rect["coord1"])
+            if not contains_any_bad_coord(coords, rect["coord0_index"], rect["coord1_index"], bad_coords):
+                largest_rect = rect
+                break
+
+        return largest_rect["area"]
 
 def main():
     #result = part1("test.txt")
     #result = part1("input.txt")
-    #result = part2("test.txt")
-    result = part2("input.txt")
+    result = part2("test.txt")
+    #result = part2("test2.txt")
+    #result = part2("input.txt")
     print(f"Result: {result}")
 
-# NOTE: You're assuming it's going clockwise, if it's bork try counter-clockwise.
+# NOTE: You're assuming it's going clockwise, if it's bork try counter-clockwise. Can just reverse coords after read.
+#
+# ^ tried this but then the guess is much too low. It seems like it _is_ clockwise.
+
 
 
 main()
