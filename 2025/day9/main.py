@@ -33,31 +33,6 @@ def part1(filename):
 
     return largest_area
 
-def border_check(coords):
-    # Does the border overlap itself? Does it cross itself?
-    print("Border check... ", end="")
-    result = {}
-    prev_coord = coords[-1]
-    for coord in coords:
-        if coord[0] == prev_coord[0]:
-            step = int((coord[1] - prev_coord[1])/abs(coord[1] - prev_coord[1]))
-            for y in range(prev_coord[1], coord[1], step):
-                border_coord = coord_to_str([coord[0], y])
-                if border_coord in result:
-                    print("crossing")
-                result[border_coord] = True
-
-        elif coord[1] == prev_coord[1]:
-            step = int((coord[0] - prev_coord[0])/abs(coord[0] - prev_coord[0]))
-            for x in range(prev_coord[0], coord[0], step):
-                border_coord = coord_to_str([x, coord[1]])
-                if border_coord in result:
-                    print("crossing")
-                result[border_coord] = True
-
-        prev_coord = coord
-    print("done.")
-    return result
 
 def get_border_coords_grid(coords, result):
     print("Get border coords grid... ", end="")
@@ -91,6 +66,7 @@ def get_offset(step):
             return (1, 0)
 
     print("ERROR get_offset got bad step", step)
+
 
 def get_dir(a, b):
     if a[0] == b[0]:
@@ -221,8 +197,6 @@ def part2(filename):
 
     # Shuffle to make it faster to find bad coords.
     random.shuffle(bad_coords)
-
-    border_check(coords)
 
     if width < 300:
         # Print grid
