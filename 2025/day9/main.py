@@ -149,7 +149,6 @@ def get_bad_coords(coords):
     return result
 
 def get_bad_coords_grid(coords, grid):
-    result = []
     print("Get bad coords grid... ", end="")
 
     # Corners
@@ -165,20 +164,16 @@ def get_bad_coords_grid(coords, grid):
                 # Inner corner
                 bad_coord = [x - y + z for x, y, z in zip(curr_coord, start_dir, end_dir)]
                 grid[coord_to_str(bad_coord)] = True
-                result.append(bad_coord)
             else:
                 # Outer corner
                 bad_coord = [x + y - z for x, y, z in zip(curr_coord, start_dir, end_dir)]
                 grid[coord_to_str(bad_coord)] = True
-                result.append(bad_coord)
 
                 bad_coord = [x + y for x, y, z in zip(curr_coord, start_dir, end_dir)]
                 grid[coord_to_str(bad_coord)] = True
-                result.append(bad_coord)
 
                 bad_coord = [x - z for x, y, z in zip(curr_coord, start_dir, end_dir)]
                 grid[coord_to_str(bad_coord)] = True
-                result.append(bad_coord)
 
         else:
             # Horizontal to vertical
@@ -186,21 +181,17 @@ def get_bad_coords_grid(coords, grid):
                 # Outer corner
                 bad_coord = [x + y - z for x, y, z in zip(curr_coord, start_dir, end_dir)]
                 grid[coord_to_str(bad_coord)] = True
-                result.append(bad_coord)
 
                 bad_coord = [x + y for x, y, z in zip(curr_coord, start_dir, end_dir)]
                 grid[coord_to_str(bad_coord)] = True
-                result.append(bad_coord)
 
                 bad_coord = [x - z for x, y, z in zip(curr_coord, start_dir, end_dir)]
                 grid[coord_to_str(bad_coord)] = True
-                result.append(bad_coord)
 
             else:
                 # Inner corner
                 bad_coord = [x - y + z for x, y, z in zip(curr_coord, start_dir, end_dir)]
                 grid[coord_to_str(bad_coord)] = True
-                result.append(bad_coord)
 
     if True:
         # Outers
@@ -212,7 +203,6 @@ def get_bad_coords_grid(coords, grid):
                 for y in range(prev_coord[1] + step, coord[1], step):
                     bad_coord = [coord[0] + offset[0], y + offset[1]]
                     grid[coord_to_str(bad_coord)] = True
-                    result.append(bad_coord)
 
             elif coord[1] == prev_coord[1]:
                 step = int((coord[0] - prev_coord[0])/abs(coord[0] - prev_coord[0]))
@@ -220,12 +210,11 @@ def get_bad_coords_grid(coords, grid):
                 for x in range(prev_coord[0] + step, coord[0], step):
                     bad_coord = [x + offset[0], coord[1] + offset[1]]
                     grid[coord_to_str(bad_coord)] = True
-                    result.append(bad_coord)
 
             prev_coord = coord
 
     print("done.")
-    return (result, grid)
+    return grid
 
 # Options are (1, 0) to (0, 1)
 
@@ -248,6 +237,9 @@ def contains_any_bad_coord(coords, i, j, bad_coords):
 def coord_to_str(coord):
     return ",".join(list(map(str, coord)))
 
+def str_to_coord(coord_id):
+    return list(map(int, coord_id.split(",")))
+
 
 def part2(filename):
     coords = []
@@ -257,7 +249,7 @@ def part2(filename):
     print("Reading coords")
     with open(filename) as file:
         for line in file:
-            coord = list(map(int, line.split(",")))
+            coord = str_to_coord(line)
             coords.append(coord)
 
             if coord[0] > highest_x:
@@ -273,8 +265,10 @@ def part2(filename):
     num_coords = len(coords)
 
     grid = {}
-    (bad_coords, grid) = get_bad_coords_grid(coords, grid)
+    grid = get_bad_coords_grid(coords, grid)
     grid = get_border_coords_grid(coords, grid)
+
+    bad_coords = list(map(str_to_coord, grid.keys()))
 
     if False:
         # Print grid
