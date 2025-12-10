@@ -91,9 +91,24 @@ def get_state_value(state):
     return result
 
 
-def get_fewest_joltage_presses(state, relevant_buttons, num_presses):
+def get_relevant_buttons(buttons, state):
+    for i, joltage in enumerate(state):
+        if joltage == 0:
+            for j, button in enumerate(buttons):
+                if i in button:
+                    # Just remove the first one.
+                    # TODO: Remove all irrelevant buttons at once.
+                    result = [x for k, x in enumerate(buttons) if k != j]
+                    #print("removed", buttons, state, result)
+                    return result
+    return buttons
+
+
+def get_fewest_joltage_presses(state, buttons, num_presses):
+    BUTTON_CHECK_INTERVAL = 5
+
     next_valued_states = []
-    for button in relevant_buttons:
+    for button in buttons:
         next_state = get_next_joltage_state(state, button)
 
         if is_end_state(next_state):
@@ -115,7 +130,11 @@ def get_fewest_joltage_presses(state, relevant_buttons, num_presses):
 
     for valued_state in next_valued_states:
         #print(valued_state["value"], valued_state["state"])
-        result = get_fewest_joltage_presses(valued_state["state"], relevant_buttons, num_presses + 1)
+        next_state = valued_state["state"]
+        next_buttons = buttons
+        if num_presses % BUTTON_CHECK_INTERVAL == 0:
+            next_buttons = get_relevant_buttons(buttons, next_state)
+        result = get_fewest_joltage_presses(next_state, next_buttons, num_presses + 1)
         if result >= 0:
             return result
 
