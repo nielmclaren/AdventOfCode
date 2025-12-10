@@ -66,41 +66,44 @@ def get_fewest_indicator_presses(machine):
 def get_next_joltage_state(state, button):
     result = state.copy()
     for wire in button:
-        result[wire] += 1
+        result[wire] -= 1
     return result
 
 
-def is_valid_state(machine, state):
-    for i, value in enumerate(state):
-        if machine["joltages"][i] < value:
+def is_valid_state(state):
+    for joltage in state:
+        if joltage < 0:
             return False
     return True
 
 
-def get_state_value(machine, state):
+def is_end_state(state):
+    for joltage in state:
+        if joltage > 0:
+            return False
+    return True
+
+
+def get_state_value(state):
     result = 0
-    for i, value in enumerate(state):
-        diff = machine["joltages"][i] - value
-        result -= pow(diff, 2)
+    for joltage in state:
+        result -= pow(joltage, 2)
     return result
 
 
-def get_fewest_joltage_presses(machine, state, presses):
+def get_fewest_joltage_presses(state, relevant_buttons, num_presses):
     next_valued_states = []
-    for i, button in enumerate(machine["buttons"]):
+    for button in relevant_buttons:
         next_state = get_next_joltage_state(state, button)
-        next_presses = presses + [i]
 
-        if next_state == machine["joltages"]:
-            next_presses.sort()
-            print("FOUND", len(next_presses), next_presses)
-            return len(next_presses)
+        if is_end_state(next_state):
+            print("FOUND", num_presses + 1)
+            return num_presses + 1
 
-        elif is_valid_state(machine, next_state):
+        elif is_valid_state(next_state):
             valued_state = {
                 "state": next_state,
-                "value": get_state_value(machine, next_state),
-                "presses": next_presses
+                "value": get_state_value(next_state),
             }
             next_valued_states.append(valued_state)
 
@@ -111,8 +114,8 @@ def get_fewest_joltage_presses(machine, state, presses):
     next_valued_states.sort(key=lambda d: d["value"], reverse=True)
 
     for valued_state in next_valued_states:
-        #print(valued_state["value"], valued_state["state"], valued_state["presses"])
-        result = get_fewest_joltage_presses(machine, valued_state["state"], valued_state["presses"])
+        #print(valued_state["value"], valued_state["state"])
+        result = get_fewest_joltage_presses(valued_state["state"], relevant_buttons, num_presses + 1)
         if result >= 0:
             return result
 
@@ -152,8 +155,7 @@ def part2(filename):
     num_presses = 0
     for i, machine in enumerate(machines):
         print(f"{i} / {num_machines} ({i / num_machines})")
-        num_presses += get_fewest_joltage_presses(machine, [0] * len(machine["joltages"]), [])
-        break
+        num_presses += get_fewest_joltage_presses(machine["joltages"], machine["buttons"], 0)
 
     return num_presses
 
@@ -166,3 +168,4 @@ def main():
 
 
 main()
+#cProfile.run('main()')
