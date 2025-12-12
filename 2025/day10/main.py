@@ -5,7 +5,7 @@ import math
 import re
 import sys
 
-# Guesses: ...
+# Guesses: 17785 (too high)
 
 def indicator_to_bool(char):
     return char == '#'
@@ -82,101 +82,6 @@ def is_end_state(state):
         if joltage > 0:
             return False
     return True
-
-
-def get_state_value(state):
-    result = 0
-    for joltage in state:
-        result -= joltage * joltage
-    return result
-
-
-def get_relevant_buttons(buttons, state):
-    for i, joltage in enumerate(state):
-        if joltage == 0:
-            for j, button in enumerate(buttons):
-                if i in button:
-                    # Just remove the first one.
-                    # TODO: Remove all irrelevant buttons at once.
-                    result = [x for k, x in enumerate(buttons) if k != j]
-                    #print("removed", buttons, state, result)
-                    return result
-    return buttons
-
-
-num_visits = 0
-
-low_num_presses = math.inf
-high_num_presses = 0
-high_num_presses_presses = None
-
-low_value = 0
-high_value = -math.inf
-high_value_presses = None
-
-def get_fewest_joltage_presses(state, buttons, presses, num_presses):
-    global num_visits, low_num_presses, high_num_presses, high_num_presses_presses, low_value, high_value, high_value_presses
-
-    if num_presses < low_num_presses:
-        low_num_presses = num_presses
-    if num_presses > high_num_presses:
-        high_num_presses = num_presses
-        high_num_presses_presses = presses
-
-    BUTTON_CHECK_INTERVAL = 5
-
-    next_valued_states = []
-    for i, button in enumerate(buttons):
-        next_state = get_next_joltage_state(state, button)
-
-        if is_end_state(next_state):
-            print("FOUND", num_presses + 1)
-            print(f"\tPresses: {presses + str(i)}")
-            return num_presses + 1
-
-        elif is_valid_state(next_state):
-            valued_state = {
-                "state": next_state,
-                "value": get_state_value(next_state),
-                "pressed": str(i),
-            }
-            next_valued_states.append(valued_state)
-
-
-    if len(next_valued_states) <= 0:
-        return -1
-
-    next_valued_states.sort(key=lambda d: d["value"], reverse=True)
-
-    for valued_state in next_valued_states:
-        next_state = valued_state["state"]
-        next_buttons = buttons
-
-        next_value = valued_state["value"]
-        if next_value < low_value:
-            low_value = next_value
-        if next_value > high_value:
-            high_value = next_value
-            high_value_presses = presses
-
-        if num_presses % BUTTON_CHECK_INTERVAL == 0:
-            next_buttons = get_relevant_buttons(buttons, next_state)
-
-        result = get_fewest_joltage_presses(next_state, next_buttons, presses + valued_state["pressed"], num_presses + 1)
-        if result >= 0:
-            return result
-
-        num_visits += 1
-        if num_visits % 100000 == 0:
-            print(f"Visits: {num_visits}\tPresses: {low_num_presses} : {high_num_presses}\tValue: {low_value} : {high_value}")
-            print(f"\tHigh num presses state: {high_num_presses_presses}")
-            print(f"\tHigh value state: {high_value_presses}")
-            low_num_presses = math.inf
-            high_num_presses = -math.inf
-            low_value = math.inf
-            high_value = -math.inf
-
-    return -1
 
 
 # Returns true iff at least one of the buttons has the given index.
