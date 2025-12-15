@@ -84,26 +84,52 @@ def is_end_state(state):
     return True
 
 
+# Returns true iff at least one of the buttons has the given index.
+def has_index(buttons, index):
+    for button in buttons:
+        if index in button:
+            return True
+    return False
+
+
+# Build an array where the index is the button index and the value is
+# an array of indices which no later button affects but this one does.
+def get_button_only_indices(buttons):
+    result = []
+    for button_index, button in enumerate(buttons):
+        remaining_buttons = buttons[button_index+1:]
+        button_result = []
+        for index in button:
+            if not has_index(remaining_buttons, index):
+                button_result.append(index)
+        result.append(button_result)
+    return result
+
+
+button_only_indices = []
+
+
+def get_button_only_index(button_index, state):
+    indices = button_only_indices[button_index]
+    if len(indices) <= 0:
+        return -1
+
+    if len(indices) == 1:
+        return indices[0]
+
+    indices.sort(key=lambda d: state[d], reverse=True)
+
+    return indices[0]
+
+
 def get_fewest_joltage_presses_ordered(state, buttons, presses, num_presses):
     global button_only_indices
 
     buttons.sort(key=len, reverse=True)
 
+    button_only_indices = get_button_only_indices(buttons)
+
     return get_fewest_joltage_presses_ordered_helper(state, buttons, 0, presses, num_presses)
-
-
-def is_state_divisible_by(state, factor):
-    for joltage in state:
-        if joltage % factor != 0:
-            return False
-    return True
-
-
-def get_common_factor(state):
-    for factor in [7, 5, 3, 2]:
-        if is_state_divisible_by(state, factor):
-            return factor
-    return -1
 
 
 def get_fewest_joltage_presses_ordered_helper(state, buttons, button_start_index, presses, num_presses):
@@ -116,22 +142,25 @@ def get_fewest_joltage_presses_ordered_helper(state, buttons, button_start_index
         #print(num_presses, "\t", state, "\t", presses)
         return -1
 
-    else:
-        num_buttons = len(buttons)
-        factor = get_common_factor(state)
-        if factor > 0:
-            result = get_fewest_joltage_presses_ordered_helper([int(x / factor) for x in state], buttons, button_start_index, f"{presses}*{factor}*", num_presses)
+    num_buttons = len(buttons)
+    for button_index in range(button_start_index, num_buttons):
+        button = buttons[button_index]
+
+        index = get_button_only_index(button_index, state)
+        if index >= 0 and state[index] > 0:
+            # Jump
+            jump_count = state[index]
+            next_state = get_next_joltage_state(state, button, jump_count)
+            #print(f"JUMP {button} by {state[index]}", index, state, next_state)
+            result = get_fewest_joltage_presses_ordered_helper(next_state, buttons, button_index, presses + (str(button_index) * jump_count), num_presses + jump_count)
             if result >= 0:
                 return result
 
         else:
-            for button_index in range(button_start_index, num_buttons):
-                button = buttons[button_index]
-
-                next_state = get_next_joltage_state(state, button)
-                result = get_fewest_joltage_presses_ordered_helper(next_state, buttons, button_index, presses + str(button_index), num_presses + 1)
-                if result >= 0:
-                    return result
+            next_state = get_next_joltage_state(state, button)
+            result = get_fewest_joltage_presses_ordered_helper(next_state, buttons, button_index, presses + str(button_index), num_presses + 1)
+            if result >= 0:
+                return result
 
     return -1
 
