@@ -19,7 +19,7 @@ def get_indicator(line):
 
 
 def button_to_ints(button):
-    return list(map(lambda d: int(d), button.split(",")))
+    return list(map(int, button.split(",")))
 
 
 def get_buttons(line):
@@ -38,155 +38,79 @@ def get_joltages(line):
     return result
 
 
-def get_next_indicator_state(state, button):
-    result = state.copy()
-    for wire in button:
-        result[wire] = not state[wire]
+def get_max_presses(joltages, button):
+    return min([joltages[wire] for wire in button])
+
+
+def get_remaining_joltages(joltages, button, num_presses):
+    return [joltage - (num_presses if i in button else 0) for i, joltage in enumerate(joltages)]
+
+
+def get_joltages_after_presses(starting_joltages, buttons, presses):
+    result = starting_joltages.copy()
+    for i, button in enumerate(buttons):
+        num_presses = presses[i]
+        for wire in button:
+            result[wire] -= num_presses
     return result
 
 
-def get_fewest_indicator_presses(machine):
-    num_presses = 0
-    states = [[False] * len(machine["indicator"])]
-    while True:
-        next_states = []
-        for state in states:
-            for i, button in enumerate(machine["buttons"]):
-                next_state = get_next_indicator_state(state, button)
-                if next_state == machine["indicator"]:
-                    print("FOUND", num_presses)
-                    return num_presses + 1
-
-                next_states.append(next_state)
-
-        states = next_states
-        num_presses += 1
-
-
-def get_next_joltage_state(state, button, count=1):
-    result = state.copy()
-    for wire in button:
-        result[wire] -= count
-    return result
-
-
-def is_valid_state(state):
-    for joltage in state:
-        if joltage < 0:
-            return False
-    return True
-
-
-def is_end_state(state):
-    for joltage in state:
-        if joltage > 0:
-            return False
-    return True
-
-
-# Returns true iff at least one of the buttons has the given index.
-def has_index(buttons, index):
-    for button in buttons:
-        if index in button:
+def is_reachable_joltage_index(joltage_index, buttons, start_button_index):
+    for button_index in range(start_button_index, len(buttons)):
+        if joltage_index in buttons[button_index]:
             return True
     return False
 
 
-# Build an array where the index is the button index and the value is
-# an array of indices which no later button affects but this one does.
-def get_button_only_indices(buttons):
-    result = []
-    for button_index, button in enumerate(buttons):
-        remaining_buttons = buttons[button_index+1:]
-        button_result = []
-        for index in button:
-            if not has_index(remaining_buttons, index):
-                button_result.append(index)
-        result.append(button_result)
-    return result
+def all_reachable_joltages(joltages, buttons, start_button_index):
+    for i, joltage in enumerate(joltages):
+        if joltage > 0 and not is_reachable_joltage_index(i, buttons, start_button_index):
+            return False
+    return True
 
 
-button_only_indices = []
-
-
-def get_button_only_index(button_index, state):
-    indices = button_only_indices[button_index]
-    if len(indices) <= 0:
-        return -1
-
-    if len(indices) == 1:
-        return indices[0]
-
-    indices.sort(key=lambda d: state[d], reverse=True)
-
-    return indices[0]
-
-
-def get_fewest_joltage_presses_ordered(state, buttons, presses, num_presses):
-    global button_only_indices
-
-    buttons.sort(key=len, reverse=True)
-
-    button_only_indices = get_button_only_indices(buttons)
-
-    return get_fewest_joltage_presses_ordered_helper(state, buttons, 0, presses, num_presses)
-
-
-def get_fewest_joltage_presses_ordered_helper(state, buttons, button_start_index, presses, num_presses):
-    if is_end_state(state):
-        print("FOUND", num_presses)
-        print(presses)
-        return num_presses
-
-    elif not is_valid_state(state):
-        #print(num_presses, "\t", state, "\t", presses)
-        return -1
-
+def solve(joltages, buttons, button_index=0, presses=None):
     num_buttons = len(buttons)
-    for button_index in range(button_start_index, num_buttons):
-        button = buttons[button_index]
 
-        index = get_button_only_index(button_index, state)
-        if index >= 0 and state[index] > 0:
-            # Jump
-            jump_count = state[index]
-            next_state = get_next_joltage_state(state, button, jump_count)
-            #print(f"JUMP {button} by {state[index]}", index, state, next_state)
-            result = get_fewest_joltage_presses_ordered_helper(next_state, buttons, button_index, presses + (str(button_index) * jump_count), num_presses + jump_count)
-            if result >= 0:
-                return result
+    if not presses:
+        presses = [0] * num_buttons
 
-        else:
-            next_state = get_next_joltage_state(state, button)
-            result = get_fewest_joltage_presses_ordered_helper(next_state, buttons, button_index, presses + str(button_index), num_presses + 1)
-            if result >= 0:
-                return result
+    if button_index >= num_buttons:
+        return -1
+
+    if not all_reachable_joltages(joltages, buttons, button_index):
+        return -1
+
+    button = buttons[button_index]
+    max_presses = get_max_presses(joltages, button)
+
+    for num_presses in range(max_presses, -1, -1):
+        presses[button_index] = num_presses
+        next_joltages = get_remaining_joltages(joltages, button, num_presses)
+
+        if sum(next_joltages) == 0:
+            print("FOUND", sum(presses), presses, next_joltages)
+            return sum(presses)
+
+        #print(presses, next_joltages)
+
+        total_num_presses = solve(next_joltages, buttons, button_index + 1, presses)
+        if total_num_presses >= 0:
+            return total_num_presses
 
     return -1
 
 
-def part1(filename):
-    machines = []
-    with open(filename) as file:
-        for line in file:
-            # [.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
-            machine = {
-                "indicator": get_indicator(line),
-                "buttons": get_buttons(line)
-            }
-            machines.append(machine)
-
-    num_presses = 0
-    for machine in machines:
-        num_presses += get_fewest_indicator_presses(machine)
-
-    return num_presses
-
-
 def part2(filename):
+    EXPECTED_PREFIX = "Expected: "
     machines = []
+    expected = -1
     with open(filename) as file:
         for line in file:
+            if line[0:len(EXPECTED_PREFIX)] == EXPECTED_PREFIX:
+                expected = int(line[len(EXPECTED_PREFIX):])
+                continue
+
             # [.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
             machine = {
                 "buttons": get_buttons(line),
@@ -194,21 +118,29 @@ def part2(filename):
             }
             machines.append(machine)
 
-    num_machines = len(machines)
     num_presses = 0
+    num_machines = len(machines)
     for i, machine in enumerate(machines):
-        print(f"{i} / {num_machines} ({i / num_machines})")
-        #num_presses += get_fewest_joltage_presses(machine["joltages"], machine["buttons"], "", 0)
-        num_presses += get_fewest_joltage_presses_ordered(machine["joltages"], machine["buttons"], "", 0)
+        sorted_buttons = machine["buttons"]
+        sorted_buttons.sort(key=len, reverse=True)
 
-    return num_presses
+        print(f"{i} / {num_machines}")
+        print(machine["joltages"])
+        print(sorted_buttons)
+        print("---")
+        num_presses += solve(machine["joltages"], sorted_buttons)
+
+    return (num_presses, expected)
 
 
 def main():
     filename = sys.argv[1]
-    #result = part1(filename)
-    result = part2(filename)
+    (result, expected) = part2(filename)
     print(f"Result: {result}")
+    if expected >= 0:
+        print(f"Expected: {expected}")
+
+    # TODO: Don't forget you need to address the issue with multiple buttons of the same length. (test7)
 
 
 main()
