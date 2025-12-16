@@ -6,7 +6,7 @@ import math
 import re
 import sys
 
-# Guesses: 17785 (too high), 17058 (too low)
+# Guesses: 17785 (too high), 17058 (too low), 17153 (too high)
 
 
 def indicator_to_bool(char):
@@ -124,6 +124,7 @@ def solve(joltages, buttons, multiplier=1, num_presses=0, combos=None):
         if len(even_joltage_combos) <= 0:
             # No more combos. Solve it the old-fashioned way.
             #brute_solve(joltages, buttons, multiplier, num_presses, combos)
+            print("ERROR", joltages)
             return -1
 
     # For each even-making combo, press the required buttons then halve the joltages.
@@ -167,7 +168,7 @@ def part2(filename):
     for i, machine in enumerate(machines):
         print(f"{i} / {num_machines}")
         print("Joltages:", machine["joltages"])
-        #print("Buttons:", machine["buttons"])
+        print("Buttons:", machine["buttons"])
         num_presses = solve(machine["joltages"], machine["buttons"])
         print("Num presses:", num_presses)
         if num_presses <= 0:
