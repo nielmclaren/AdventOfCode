@@ -6,7 +6,8 @@ import math
 import re
 import sys
 
-# Guesses: 17785 (too high)
+# Guesses: 17785 (too high), 17058 (too low)
+
 
 def indicator_to_bool(char):
     return char == '#'
@@ -38,6 +39,8 @@ def get_joltages(line):
     #print(result)
     return result
 
+
+# In each combination, each button may be pressed once or not at all.
 def get_combinations(n):
     result = []
     for i in range(n):
@@ -48,9 +51,11 @@ def get_combinations(n):
         result = next_result
     return result
 
+
 # Get remaining joltages after pressing a button.
 def get_remaining_joltages(joltages, button, num_presses=1):
     return [joltage - (num_presses if i in button else 0) for i, joltage in enumerate(joltages)]
+
 
 # Get remaining joltages after pressing multiple buttons.
 def get_remaining_joltages_multi(joltages, buttons, num_presses=1):
@@ -72,45 +77,65 @@ def get_next_presses_multi(presses, button_indices, num_presses=1):
         result[button_index] += num_presses
     return result
 
+def brute_solve(joltages, buttons, multiplier, num_presses, combos, depth=0):
+    #print(depth, joltages, num_presses)
+    lowest_total_presses = math.inf
+    for button in buttons:
+        next_joltages = get_remaining_joltages(joltages, button)
+        if all(map(lambda d: d == 0, next_joltages)):
+            print("found", num_presses + multiplier)
+            return num_presses + multiplier
 
-def solve(joltages, buttons, multiplier=1, presses=None):
-    if not presses:
-        presses = [0] * len(buttons)
+        if any(map(lambda d: d < 0, next_joltages)):
+            continue
 
-    #print("STEP", presses, joltages, multiplier)
+        total_presses = brute_solve(next_joltages, buttons, multiplier, num_presses + multiplier, combos,  depth+1)
+        if total_presses > 0 and total_presses < lowest_total_presses:
+            lowest_total_presses = total_presses
+
+    if lowest_total_presses != math.inf:
+        return lowest_total_presses
+
+    return -1
+
+
+def solve(joltages, buttons, multiplier=1, num_presses=0, combos=None):
+    #print("solve", joltages)
+
+    if not combos:
+        # Build a list of all combinations of button presses to be used throughout.
+        combos = get_combinations(len(buttons))
 
     if sum(joltages) == 0:
-        #print("Found", sum(presses))
-        return sum(presses)
+        return num_presses
 
     even_joltage_combos = []
     if all(map(lambda d: d % 2 == 0, joltages)):
-        # The jooltages are already even.
+        # The joltages are already even.
         even_joltage_combos.append([])
 
     else:
-        # Build a list of all combinations of button presses.
-        combos = get_combinations(len(buttons))
-
         # Filter out combinations that don't result in all joltages being even.
         for combo in combos:
             result_joltages = get_remaining_joltages_multi(joltages, list(map(lambda d: buttons[d], combo)))
-            if all(map(lambda d: d % 2 == 0, result_joltages)) and all(map(lambda d: d >= 0, result_joltages)):
+            if all(map(lambda d: d % 2 == 0 and d >= 0, result_joltages)):
                 even_joltage_combos.append(combo)
 
         if len(even_joltage_combos) <= 0:
+            # No more combos. Solve it the old-fashioned way.
+            #brute_solve(joltages, buttons, multiplier, num_presses, combos)
             return -1
 
     # For each even-making combo, press the required buttons then halve the joltages.
     lowest_total_presses = math.inf
     for combo in even_joltage_combos:
         next_joltages = get_remaining_joltages_multi(joltages, [button for i, button in enumerate(buttons) if i in combo])
-        next_presses = get_next_presses_multi(presses, combo, multiplier)
+        next_num_presses = num_presses + multiplier * len(combo)
 
         halved_joltages = list(map(lambda d: int(d / 2), next_joltages))
 
         # Choose the result with the lowest number of total presses.
-        total_presses = solve(halved_joltages, buttons, multiplier * 2, next_presses)
+        total_presses = solve(halved_joltages, buttons, multiplier * 2, next_num_presses, combos)
         if total_presses > 0 and total_presses < lowest_total_presses:
             lowest_total_presses = total_presses
 
@@ -142,12 +167,13 @@ def part2(filename):
     for i, machine in enumerate(machines):
         print(f"{i} / {num_machines}")
         print("Joltages:", machine["joltages"])
-        print("Buttons:", machine["buttons"])
+        #print("Buttons:", machine["buttons"])
         num_presses = solve(machine["joltages"], machine["buttons"])
         print("Num presses:", num_presses)
+        if num_presses <= 0:
+            print("ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ")
         total_num_presses += num_presses
 
-        print("")
         print("")
 
     return (total_num_presses, expected)
