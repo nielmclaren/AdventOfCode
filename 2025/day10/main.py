@@ -1,9 +1,12 @@
 #!/usr/bin/python3
 
 import cProfile
+import itertools
 import math
 import re
 import sys
+from button_ref import ButtonRef
+from traversal import Traversal
 
 # Guesses: 17785 (too high)
 
@@ -46,58 +49,97 @@ def get_remaining_joltages(joltages, button, num_presses):
     return [joltage - (num_presses if i in button else 0) for i, joltage in enumerate(joltages)]
 
 
-def get_joltages_after_presses(starting_joltages, buttons, presses):
-    result = starting_joltages.copy()
-    for i, button in enumerate(buttons):
-        num_presses = presses[i]
-        for wire in button:
-            result[wire] -= num_presses
+def get_next_presses(presses, button_index, num_presses):
+    result = presses.copy()
+    result[button_index] = num_presses
     return result
 
 
-def is_reachable_joltage_index(joltage_index, buttons, start_button_index):
-    for button_index in range(start_button_index, len(buttons)):
-        if joltage_index in buttons[button_index]:
-            return True
-    return False
+def is_solved(joltages):
+    return sum(joltages) == 0
 
 
-def all_reachable_joltages(joltages, buttons, start_button_index):
-    for i, joltage in enumerate(joltages):
-        if joltage > 0 and not is_reachable_joltage_index(i, buttons, start_button_index):
-            return False
-    return True
+# joltages (remaining) [23, 45, 52]
+# buttons [ [0, 2, 3],  [1, 2],  [2, 3],  [3] ]
+#
+def solve(joltages, buttons):
+    traversal = Traversal(buttons)
+    ref = ButtonRef()
+
+    # Accumulate the number of presses for the button at the same index.
+    presses = [0] * len(buttons)
+
+    #print("---")
+    #print("Joltages", "\t", "Presses")
+
+    # Iterate through all permutations of the first group and return the lowest num presses.
+    lowest_total_num_presses = math.inf
+    for button_ref in traversal.get_permutations(ref.group):
+        num_presses = helper(joltages, traversal, button_ref, presses)
+        if num_presses >= 0 and num_presses < lowest_total_num_presses:
+            lowest_total_num_presses = num_presses
+
+    return lowest_total_num_presses
 
 
-def solve(joltages, buttons, button_index=0, presses=None):
-    num_buttons = len(buttons)
+#def helper(joltages, buttons, button_permu_groups, group_index, permu_index, permu_button_index, presses):
+def helper(remaining_joltages, traversal, button_ref, presses):
+    button_index = traversal.get_button_index(button_ref)
 
-    if not presses:
-        presses = [0] * num_buttons
+    #print(joltages, "\t", presses, group_index, permu_index, permu_button_index)
 
-    if button_index >= num_buttons:
+    if not traversal.all_reachable_joltages(remaining_joltages, button_ref):
+        #print(remaining_joltages, "\t", presses, "UNREACHABLE")
         return -1
 
-    if not all_reachable_joltages(joltages, buttons, button_index):
+    button = traversal.get_button(button_ref)
+    max_presses = get_max_presses(remaining_joltages, button)
+
+    if traversal.is_last_button(button_ref):
+        # For the last button just max out the number of presses, no decrementing.
+        next_presses = get_next_presses(presses, button_index, max_presses)
+        next_joltages = get_remaining_joltages(remaining_joltages, button, max_presses)
+
+        # Check for the end condition.
+        if is_solved(next_joltages):
+            #print(next_joltages, "\t", next_presses, "FOUND", sum(next_presses))
+            return sum(next_presses)
+
+        # If maxing out the last button didn't satisfy the end condition then it's a dead end.
+        #print(next_joltages, "\t", next_presses, "DEAD END")
         return -1
 
-    button = buttons[button_index]
-    max_presses = get_max_presses(joltages, button)
+    else:
+        # Start with the maximum number of presses possible and decrement.
+        for num_presses in range(max_presses, -1, -1):
+            next_presses = get_next_presses(presses, button_index, num_presses)
+            next_joltages = get_remaining_joltages(remaining_joltages, button, num_presses)
 
-    for num_presses in range(max_presses, -1, -1):
-        presses[button_index] = num_presses
-        next_joltages = get_remaining_joltages(joltages, button, num_presses)
+            # Check for the end condition.
+            if is_solved(next_joltages):
+                #print(next_joltages, "\t", next_presses, "FOUND", sum(next_presses))
+                return sum(next_presses)
 
-        if sum(next_joltages) == 0:
-            print("FOUND", sum(presses), presses, next_joltages)
-            return sum(presses)
+            if traversal.is_last_button_in_group(button_ref):
+                # Reached the end of the current permutation. Onto the next one.
+                next_group_index = traversal.next_group_index(button_ref)
 
-        #print(presses, next_joltages)
+                lowest_total_num_presses = math.inf
+                for next_button_ref in traversal.get_permutations(next_group_index):
+                    total_num_presses = helper(next_joltages, traversal, next_button_ref, next_presses)
+                    if total_num_presses >= 0 and total_num_presses < lowest_total_num_presses:
+                        lowest_total_num_presses = total_num_presses
+                if lowest_total_num_presses != math.inf:
+                    return lowest_total_num_presses
 
-        total_num_presses = solve(next_joltages, buttons, button_index + 1, presses)
-        if total_num_presses >= 0:
-            return total_num_presses
+            else:
+                # Continue with the next button in the current permutation.
+                next_button_ref = traversal.next(button_ref)
+                total_num_presses = helper(next_joltages, traversal, next_button_ref, next_presses)
+                if total_num_presses >= 0:
+                    return total_num_presses
 
+    #print(remaining_joltages, "\t", presses, "END END")
     return -1
 
 
@@ -118,19 +160,22 @@ def part2(filename):
             }
             machines.append(machine)
 
-    num_presses = 0
+    total_num_presses = 0
     num_machines = len(machines)
     for i, machine in enumerate(machines):
         sorted_buttons = machine["buttons"]
         sorted_buttons.sort(key=len, reverse=True)
 
         print(f"{i} / {num_machines}")
-        print(machine["joltages"])
-        print(sorted_buttons)
-        print("---")
-        num_presses += solve(machine["joltages"], sorted_buttons)
+        print("Joltages:", machine["joltages"])
+        num_presses = solve(machine["joltages"], sorted_buttons)
+        print("Num presses:", num_presses)
+        total_num_presses += num_presses
 
-    return (num_presses, expected)
+        print("")
+        print("")
+
+    return (total_num_presses, expected)
 
 
 def main():
