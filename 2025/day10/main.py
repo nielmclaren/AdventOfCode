@@ -5,8 +5,6 @@ import itertools
 import math
 import re
 import sys
-from button_ref import ButtonRef
-from traversal import Traversal
 
 # Guesses: 17785 (too high)
 
@@ -40,107 +38,86 @@ def get_joltages(line):
     #print(result)
     return result
 
+def get_combinations(n):
+    result = []
+    for i in range(n):
+        next_result = [[i]]
+        for item in result:
+            next_result.append(item)
+            next_result.append(item + [i])
+        result = next_result
+    return result
 
-def get_max_presses(joltages, button):
-    return min([joltages[wire] for wire in button])
-
-
-def get_remaining_joltages(joltages, button, num_presses):
+# Get remaining joltages after pressing a button.
+def get_remaining_joltages(joltages, button, num_presses=1):
     return [joltage - (num_presses if i in button else 0) for i, joltage in enumerate(joltages)]
 
-
-def get_next_presses(presses, button_index, num_presses):
-    result = presses.copy()
-    result[button_index] = num_presses
+# Get remaining joltages after pressing multiple buttons.
+def get_remaining_joltages_multi(joltages, buttons, num_presses=1):
+    result = joltages
+    for button in buttons:
+        result = get_remaining_joltages(result, button, num_presses)
     return result
 
 
-def is_solved(joltages):
-    return sum(joltages) == 0
+def get_next_presses(presses, button_index, num_presses=1):
+    result = presses.copy()
+    result[button_index] += num_presses
+    return result
 
 
-# joltages (remaining) [23, 45, 52]
-# buttons [ [0, 2, 3],  [1, 2],  [2, 3],  [3] ]
-#
-def solve(joltages, buttons):
-    traversal = Traversal(buttons)
-    ref = ButtonRef()
-
-    # Accumulate the number of presses for the button at the same index.
-    presses = [0] * len(buttons)
-
-    #print("---")
-    #print("Joltages", "\t", "Presses")
-
-    # Iterate through all permutations of the first group and return the lowest num presses.
-    lowest_total_num_presses = math.inf
-    for button_ref in traversal.get_permutations(ref.group):
-        num_presses = helper(joltages, traversal, button_ref, presses)
-        if num_presses >= 0 and num_presses < lowest_total_num_presses:
-            lowest_total_num_presses = num_presses
-
-    return lowest_total_num_presses
+def get_next_presses_multi(presses, button_indices, num_presses=1):
+    result = presses.copy()
+    for button_index in button_indices:
+        result[button_index] += num_presses
+    return result
 
 
-#def helper(joltages, buttons, button_permu_groups, group_index, permu_index, permu_button_index, presses):
-def helper(remaining_joltages, traversal, button_ref, presses):
-    button_index = traversal.get_button_index(button_ref)
+def solve(joltages, buttons, multiplier=1, presses=None):
+    if not presses:
+        presses = [0] * len(buttons)
 
-    #print(joltages, "\t", presses, group_index, permu_index, permu_button_index)
+    #print("STEP", presses, joltages, multiplier)
 
-    if not traversal.all_reachable_joltages(remaining_joltages, button_ref):
-        #print(remaining_joltages, "\t", presses, "UNREACHABLE")
-        return -1
+    if sum(joltages) == 0:
+        #print("Found", sum(presses))
+        return sum(presses)
 
-    button = traversal.get_button(button_ref)
-    max_presses = get_max_presses(remaining_joltages, button)
-
-    if traversal.is_last_button(button_ref):
-        # For the last button just max out the number of presses, no decrementing.
-        next_presses = get_next_presses(presses, button_index, max_presses)
-        next_joltages = get_remaining_joltages(remaining_joltages, button, max_presses)
-
-        # Check for the end condition.
-        if is_solved(next_joltages):
-            #print(next_joltages, "\t", next_presses, "FOUND", sum(next_presses))
-            return sum(next_presses)
-
-        # If maxing out the last button didn't satisfy the end condition then it's a dead end.
-        #print(next_joltages, "\t", next_presses, "DEAD END")
-        return -1
+    even_joltage_combos = []
+    if all(map(lambda d: d % 2 == 0, joltages)):
+        # The jooltages are already even.
+        even_joltage_combos.append([])
 
     else:
-        # Start with the maximum number of presses possible and decrement.
-        for num_presses in range(max_presses, -1, -1):
-            next_presses = get_next_presses(presses, button_index, num_presses)
-            next_joltages = get_remaining_joltages(remaining_joltages, button, num_presses)
+        # Build a list of all combinations of button presses.
+        combos = get_combinations(len(buttons))
 
-            # Check for the end condition.
-            if is_solved(next_joltages):
-                #print(next_joltages, "\t", next_presses, "FOUND", sum(next_presses))
-                return sum(next_presses)
+        # Filter out combinations that don't result in all joltages being even.
+        for combo in combos:
+            result_joltages = get_remaining_joltages_multi(joltages, list(map(lambda d: buttons[d], combo)))
+            if all(map(lambda d: d % 2 == 0, result_joltages)) and all(map(lambda d: d >= 0, result_joltages)):
+                even_joltage_combos.append(combo)
 
-            if traversal.is_last_button_in_group(button_ref):
-                # Reached the end of the current permutation. Onto the next one.
-                next_group_index = traversal.next_group_index(button_ref)
+        if len(even_joltage_combos) <= 0:
+            return -1
 
-                lowest_total_num_presses = math.inf
-                for next_button_ref in traversal.get_permutations(next_group_index):
-                    total_num_presses = helper(next_joltages, traversal, next_button_ref, next_presses)
-                    if total_num_presses >= 0 and total_num_presses < lowest_total_num_presses:
-                        lowest_total_num_presses = total_num_presses
-                if lowest_total_num_presses != math.inf:
-                    return lowest_total_num_presses
+    # For each even-making combo, press the required buttons then halve the joltages.
+    lowest_total_presses = math.inf
+    for combo in even_joltage_combos:
+        next_joltages = get_remaining_joltages_multi(joltages, [button for i, button in enumerate(buttons) if i in combo])
+        next_presses = get_next_presses_multi(presses, combo, multiplier)
 
-            else:
-                # Continue with the next button in the current permutation.
-                next_button_ref = traversal.next(button_ref)
-                total_num_presses = helper(next_joltages, traversal, next_button_ref, next_presses)
-                if total_num_presses >= 0:
-                    return total_num_presses
+        halved_joltages = list(map(lambda d: int(d / 2), next_joltages))
 
-    #print(remaining_joltages, "\t", presses, "END END")
+        # Choose the result with the lowest number of total presses.
+        total_presses = solve(halved_joltages, buttons, multiplier * 2, next_presses)
+        if total_presses > 0 and total_presses < lowest_total_presses:
+            lowest_total_presses = total_presses
+
+    if lowest_total_presses != math.inf:
+        return lowest_total_presses
     return -1
+
 
 
 def part2(filename):
@@ -163,12 +140,10 @@ def part2(filename):
     total_num_presses = 0
     num_machines = len(machines)
     for i, machine in enumerate(machines):
-        sorted_buttons = machine["buttons"]
-        sorted_buttons.sort(key=len, reverse=True)
-
         print(f"{i} / {num_machines}")
         print("Joltages:", machine["joltages"])
-        num_presses = solve(machine["joltages"], sorted_buttons)
+        print("Buttons:", machine["buttons"])
+        num_presses = solve(machine["joltages"], machine["buttons"])
         print("Num presses:", num_presses)
         total_num_presses += num_presses
 
